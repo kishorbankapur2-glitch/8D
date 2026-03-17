@@ -28,6 +28,7 @@ body {
 .left {
   flex: 1;
   text-align: center;
+  min-width: 0; /* 🔥 IMPORTANT FIX */
 }
 
 .left h2 {
@@ -96,11 +97,14 @@ button:active {
   display: none;
 }
 
-/* 🎵 Song Title */
+/* 🎵 Song Title FIXED */
 #title {
   font-size: 14px;
   margin-top: 5px;
   color: #aaa;
+
+  display: block;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
