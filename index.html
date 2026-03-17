@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>8D Player</title>
+
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+  background: #0c0c0f;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: -apple-system, sans-serif;
+  color: white;
+}
+
+.player {
+  background: #1c1c1e;
+  padding: 25px;
+  border-radius: 25px;
+  width: 320px;
+  display: flex;
+  gap: 20px;
+}
+
+.left {
+  flex: 1;
+  text-align: center;
+}
+
+.left h2 {
+  margin-bottom: 10px;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+}
+
+/* 🎚 Volume */
+#volume {
+  writing-mode: bt-lr;
+  -webkit-appearance: slider-vertical;
+  height: 150px;
+}
+
+/* 🔘 Play Button */
+button {
+  margin-top: 15px;
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(145deg, #2c2c2e, #1a1a1c);
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+}
+
+button:active {
+  transform: scale(0.95);
+  box-shadow: inset 0 3px 10px rgba(0,0,0,0.8);
+}
+
+/* 📁 File Button */
+.file-label {
+  display: inline-block;
+  padding: 10px 15px;
+  margin-top: 10px;
+  background: linear-gradient(145deg, #2c2c2e, #1a1a1c);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+  transition: 0.2s;
+}
+
+.file-label:hover {
+  transform: scale(1.05);
+}
+
+.file-label:active {
+  transform: scale(0.95);
+}
+
+#file {
+  display: none;
+}
+
+/* 🎵 Song Title */
+#title {
+  font-size: 14px;
+  margin-top: 5px;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 🎚 Sliders */
+input[type="range"] {
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* Center play button properly */
+#playBtn {
+  display: block;
+  margin: 15px auto;
+}
+</style>
+</head>
+
+<body>
+
+<div class="player">
+
+  <div class="left">
+    <h2>🎧 8D</h2>
+
+    <!-- Song Title -->
+    <p id="title">No song selected</p>
+
+    <!-- File Button -->
+    <label for="file" class="file-label">📁 Choose Song</label>
+    <input type="file" id="file"><br>
+
+    <!-- Seek -->
+    <input type="range" id="seek" value="0">
+
+    <!-- Play Button -->
+    <button id="playBtn">▶</button>
+
+    <br>
+    <label>8D Speed</label>
+    <input type="range" id="speed" min="0.005" max="0.1" step="0.005" value="0.02">
+  </div>
+
+  <div class="right">
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+  </div>
+
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+let audio = document.getElementById("audio");
+let ctx = new (window.AudioContext || window.webkitAudioContext)();
+let source = ctx.createMediaElementSource(audio);
+let panner = ctx.createStereoPanner();
+let gain = ctx.createGain();
+
+source.connect(panner);
+panner.connect(gain);
+gain.connect(ctx.destination);
+
+let angle = 0;
+let speed = 0.02;
+
+// File load + title
+document.getElementById("file").onchange = function() {
+  const file = this.files[0];
+  if (file) {
+    audio.src = URL.createObjectURL(file);
+    document.getElementById("title").innerText = file.name;
+  }
+};
+
+// Play/Pause
+let isPlaying = false;
+document.getElementById("playBtn").onclick = async function() {
+  if (ctx.state === "suspended") await ctx.resume();
+
+  if (!isPlaying) {
+    audio.play();
+    this.innerText = "❚❚";
+    move();
+  } else {
+    audio.pause();
+    this.innerText = "▶";
+    cancelAnimationFrame(anim);
+  }
+  isPlaying = !isPlaying;
+};
+
+// Seek
+let seek = document.getElementById("seek");
+
+audio.ontimeupdate = () => {
+  seek.value = audio.currentTime;
+  seek.max = audio.duration;
+};
+
+seek.oninput = () => {
+  audio.currentTime = seek.value;
+};
+
+// Volume
+document.getElementById("volume").oninput = function() {
+  gain.gain.value = this.value;
+};
+
+// Speed
+document.getElementById("speed").oninput = function() {
+  speed = parseFloat(this.value);
+};
+
+// 8D motion
+let anim;
+function move() {
+  function loop() {
+    angle += speed;
+    let pan = Math.sin(angle);
+    panner.pan.setValueAtTime(pan, ctx.currentTime);
+    anim = requestAnimationFrame(loop);
+  }
+  loop();
+}
+</script>
+
+</body>
+</html>
