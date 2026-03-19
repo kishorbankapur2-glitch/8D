@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <title>8D Player - Premium Export</title>
 
+<script src="https://cdn.jsdelivr.net/npm/jsmediatags/dist/jsmediatags.min.js"></script>
+
 <style>
+/* SAME CSS (UNCHANGED) */
 body {
   margin: 0;
   height: 100vh;
@@ -36,7 +39,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start; /* Fixed alignment */
+  justify-content: flex-start;
   width: 120px;
 }
 
@@ -103,26 +106,23 @@ input[type="range"] {
   margin: 15px auto;
 }
 
-/* Aesthetic Fixed Download Button */
 #downloadBtn {
-  width: 100%; /* Slider ki width ke barabar */
+  width: 100%;
   height: 40px;
   border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  background: linear-gradient(135deg, #00b09b, #96c93d); /* Modern Green Gradient */
+  background: linear-gradient(135deg, #00b09b, #96c93d);
   color: white;
   border: none;
   cursor: pointer;
-  margin-top: auto; /* Push to bottom of the right column */
+  margin-top: auto;
   box-shadow: 0 4px 15px rgba(0, 176, 155, 0.3);
 }
 
-#downloadBtn:hover {
-  filter: brightness(1.1);
-}
+#downloadBtn:hover { filter: brightness(1.1); }
 
 #downloadBtn:disabled {
   background: #444;
@@ -170,7 +170,6 @@ let source = ctx.createMediaElementSource(audio);
 let panner = ctx.createStereoPanner();
 let gain = ctx.createGain();
 
-// Careless (Dolby) Setup
 let convolver = ctx.createConvolver();
 let wetGain = ctx.createGain();
 let dryGain = ctx.createGain();
@@ -215,17 +214,40 @@ document.getElementById("dolbyBtn").onclick = function() {
 };
 
 let currentFile = null;
+let albumArt = document.getElementById("albumArt");
+
 file.onchange = function() {
   let f = this.files[0];
   if (f) {
     currentFile = f;
     audio.src = URL.createObjectURL(f);
     title.innerText = f.name;
+
+    // album art extract
+    jsmediatags.read(f, {
+      onSuccess: function(tag) {
+        let pic = tag.tags.picture;
+        if (pic) {
+          let base64 = "";
+          for (let i = 0; i < pic.data.length; i++) {
+            base64 += String.fromCharCode(pic.data[i]);
+          }
+          albumArt.src = "data:" + pic.format + ";base64," + btoa(base64);
+        } else {
+          albumArt.src = "photo.png";
+        }
+      },
+      onError: function() {
+        albumArt.src = "photo.png";
+      }
+    });
+
+    // ✅ SHOW immediately after select
+    albumArt.style.display = "block";
   }
 };
 
 let isPlaying = false;
-let albumArt = document.getElementById("albumArt");
 let anim;
 
 playBtn.onclick = async function() {
@@ -233,12 +255,10 @@ playBtn.onclick = async function() {
   if (!isPlaying) {
     audio.play();
     this.innerText = "❚❚";
-    albumArt.style.display = "block";
     move();
   } else {
     audio.pause();
     this.innerText = "▶";
-    albumArt.style.display = "none";
     cancelAnimationFrame(anim);
   }
   isPlaying = !isPlaying;
@@ -261,7 +281,7 @@ function move() {
   loop();
 }
 
-// FULL SONG DOWNLOAD LOGIC
+/* DOWNLOAD SAME (UNCHANGED) */
 document.getElementById("downloadBtn").onclick = async function() {
   if (!currentFile) return alert("Song choose karein!");
   
