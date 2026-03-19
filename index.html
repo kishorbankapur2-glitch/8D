@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>8D Player</title>
+<title>8D Player - Premium Export</title>
 
 <style>
 body {
@@ -12,7 +12,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: white;
 }
 
@@ -23,6 +23,7 @@ body {
   width: 320px;
   display: flex;
   gap: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
 }
 
 .left {
@@ -35,8 +36,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  position: relative; /* for proper image placement */
+  justify-content: flex-start; /* Fixed alignment */
+  width: 120px;
 }
 
 #albumArt {
@@ -44,14 +45,16 @@ body {
   height: 120px;
   border-radius: 20px;
   object-fit: cover;
-  margin-bottom: 10px; /* space above slider */
-  display: none; /* hidden by default */
+  margin-bottom: 15px;
+  display: none;
+  transition: all 0.3s ease;
 }
 
 #volume {
   writing-mode: bt-lr;
   -webkit-appearance: slider-vertical;
-  height: 150px;
+  height: 130px;
+  margin-bottom: 15px;
 }
 
 button {
@@ -64,7 +67,10 @@ button {
   color: white;
   font-size: 22px;
   cursor: pointer;
+  transition: transform 0.2s;
 }
+
+button:active { transform: scale(0.95); }
 
 .file-label {
   display: inline-block;
@@ -73,6 +79,7 @@ button {
   background: linear-gradient(145deg, #2c2c2e, #1a1a1c);
   border-radius: 12px;
   cursor: pointer;
+  font-size: 13px;
 }
 
 #file { display: none; }
@@ -95,6 +102,33 @@ input[type="range"] {
   display: block;
   margin: 15px auto;
 }
+
+/* Aesthetic Fixed Download Button */
+#downloadBtn {
+  width: 100%; /* Slider ki width ke barabar */
+  height: 40px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #00b09b, #96c93d); /* Modern Green Gradient */
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin-top: auto; /* Push to bottom of the right column */
+  box-shadow: 0 4px 15px rgba(0, 176, 155, 0.3);
+}
+
+#downloadBtn:hover {
+  filter: brightness(1.1);
+}
+
+#downloadBtn:disabled {
+  background: #444;
+  box-shadow: none;
+  cursor: wait;
+}
 </style>
 </head>
 
@@ -104,29 +138,25 @@ input[type="range"] {
 
   <div class="left">
     <h2>🎧 8D</h2>
-
     <p id="title">No song selected</p>
-
     <label for="file" class="file-label">📁 Choose Song</label>
-    <input type="file" id="file"><br>
-
+    <input type="file" id="file" accept="audio/*"><br>
     <input type="range" id="seek" value="0">
-
     <button id="playBtn">▶</button>
-
     <button id="dolbyBtn" style="width:auto;height:auto;border-radius:12px;padding:8px 12px;font-size:14px;">
       Careless Mode OFF
     </button>
-
-    <br>
-    <label>8D Speed</label>
+    <br><br>
+    <label style="font-size: 12px; color: #888;">8D Speed Control</label>
     <input type="range" id="speed" min="0.005" max="0.1" step="0.005" value="0.02">
   </div>
 
   <div class="right">
-    <!-- Album art above slider -->
-    <img src="photo.png" alt="Album Art" id="albumArt">
+    <div style="height:120px; width:120px; margin-bottom:15px;">
+        <img src="photo.png" alt="Art" id="albumArt">
+    </div>
     <input type="range" id="volume" min="0" max="1" step="0.01" value="1">
+    <button id="downloadBtn">Download</button>
   </div>
 
 </div>
@@ -136,12 +166,11 @@ input[type="range"] {
 <script>
 let audio = document.getElementById("audio");
 let ctx = new (window.AudioContext || window.webkitAudioContext)();
-
 let source = ctx.createMediaElementSource(audio);
 let panner = ctx.createStereoPanner();
 let gain = ctx.createGain();
 
-// Careless (Dolby)
+// Careless (Dolby) Setup
 let convolver = ctx.createConvolver();
 let wetGain = ctx.createGain();
 let dryGain = ctx.createGain();
@@ -185,9 +214,11 @@ document.getElementById("dolbyBtn").onclick = function() {
   dryGain.gain.value = dolbyMode ? 0.7 : 1;
 };
 
+let currentFile = null;
 file.onchange = function() {
   let f = this.files[0];
   if (f) {
+    currentFile = f;
     audio.src = URL.createObjectURL(f);
     title.innerText = f.name;
   }
@@ -195,18 +226,19 @@ file.onchange = function() {
 
 let isPlaying = false;
 let albumArt = document.getElementById("albumArt");
+let anim;
+
 playBtn.onclick = async function() {
   if (ctx.state === "suspended") await ctx.resume();
-
   if (!isPlaying) {
     audio.play();
     this.innerText = "❚❚";
-    albumArt.style.display = "block"; // show image above slider
+    albumArt.style.display = "block";
     move();
   } else {
     audio.pause();
     this.innerText = "▶";
-    albumArt.style.display = "none"; // hide image
+    albumArt.style.display = "none";
     cancelAnimationFrame(anim);
   }
   isPlaying = !isPlaying;
@@ -217,10 +249,8 @@ audio.ontimeupdate = () => {
   seek.max = audio.duration;
 };
 seek.oninput = () => audio.currentTime = seek.value;
-
 volume.oninput = e => gain.gain.value = e.target.value;
 
-let anim;
 function move() {
   function loop() {
     angle += speed;
@@ -229,6 +259,89 @@ function move() {
     anim = requestAnimationFrame(loop);
   }
   loop();
+}
+
+// FULL SONG DOWNLOAD LOGIC
+document.getElementById("downloadBtn").onclick = async function() {
+  if (!currentFile) return alert("Song choose karein!");
+  
+  const btn = this;
+  const originalText = btn.innerText;
+  btn.innerText = "WAIT...";
+  btn.disabled = true;
+
+  try {
+    const arrayBuffer = await currentFile.arrayBuffer();
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    const offlineCtx = new OfflineAudioContext(2, audioBuffer.length, audioBuffer.sampleRate);
+
+    const offlineSource = offlineCtx.createBufferSource();
+    offlineSource.buffer = audioBuffer;
+    const offlinePanner = offlineCtx.createStereoPanner();
+    const offlineGain = offlineCtx.createGain();
+    offlineGain.gain.value = gain.gain.value;
+
+    if (dolbyMode) {
+      const offlineConvolver = offlineCtx.createConvolver();
+      offlineConvolver.buffer = convolver.buffer;
+      const offWet = offlineCtx.createGain();
+      const offDry = offlineCtx.createGain();
+      offlineSource.connect(offlinePanner);
+      offlinePanner.connect(offDry);
+      offDry.connect(offlineGain);
+      offlinePanner.connect(offlineConvolver);
+      offlineConvolver.connect(offWet);
+      offWet.connect(offlineGain);
+      offDry.gain.value = 0.7;
+      offWet.gain.value = 0.6;
+    } else {
+      offlineSource.connect(offlinePanner);
+      offlinePanner.connect(offlineGain);
+    }
+    offlineGain.connect(offlineCtx.destination);
+
+    let offAngle = 0;
+    const step = 0.05;
+    for (let t = 0; t < audioBuffer.duration; t += step) {
+      offAngle += speed * (step / 0.016);
+      offlinePanner.pan.setValueAtTime(Math.sin(offAngle), t);
+    }
+
+    offlineSource.start();
+    const renderedBuffer = await offlineCtx.startRendering();
+    const wavBlob = bufferToWav(renderedBuffer);
+    const url = URL.createObjectURL(wavBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "8D_" + currentFile.name.split('.')[0] + ".wav";
+    a.click();
+  } catch (err) {
+    alert("Error!");
+  }
+  btn.innerText = originalText;
+  btn.disabled = false;
+};
+
+function bufferToWav(abuffer) {
+  let numOfChan = abuffer.numberOfChannels, length = abuffer.length * numOfChan * 2 + 44,
+    buffer = new ArrayBuffer(length), view = new DataView(buffer),
+    channels = [], i, sample, offset = 0, pos = 0;
+  function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+  function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+  setUint32(0x46464952); setUint32(length - 8); setUint32(0x45564157);
+  setUint32(0x20746d66); setUint32(16); setUint16(1); setUint16(numOfChan);
+  setUint32(abuffer.sampleRate); setUint32(abuffer.sampleRate * 2 * numOfChan);
+  setUint16(numOfChan * 2); setUint16(16); setUint32(0x61746164); setUint32(length - pos - 4);
+  for(i=0; i<abuffer.numberOfChannels; i++) channels.push(abuffer.getChannelData(i));
+  while(pos < length) {
+    for(i=0; i<numOfChan; i++) {
+      sample = Math.max(-1, Math.min(1, channels[i][offset]));
+      view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      pos += 2;
+    }
+    offset++;
+  }
+  return new Blob([buffer], {type: "audio/wav"});
 }
 </script>
 
